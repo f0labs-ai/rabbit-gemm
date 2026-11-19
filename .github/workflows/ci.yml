@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint and CPU tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ruff==0.17.6 pytest==9.2.0
+      - run: ruff check .
+      - run: ruff format --check .
+      - name: CPU tests (no torch needed)
+        run: PYTHONPATH=src python -m pytest -q tests/test_archs.py
+
+  vllm-image:
+    name: Build and check in vllm/vllm-openai:v0.32.0
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space for the image
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Compile for sm_90a and sm_120, type-check, test (GPU tests skip without a GPU)
+        run: >-
+          docker run --rm -v "$PWD:/src" -w /src --entrypoint bash
+          vllm/vllm-openai:v0.32.0 ci/check_in_vllm_image.sh

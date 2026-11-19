@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rabbit-gemm"
+version = "0.1.0"
+description = "Weight-only FP8 (W8A16) decode GEMM kernels for NVIDIA Hopper and Blackwell, and the sr_w8a16 vLLM plugin that uses them"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "F0 Labs", email = "sm@folabs.ai" }]
+requires-python = ">=3.11"
+classifiers = [
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+# torch and vllm come from the serving environment (vllm==0.32.0, torch 2.13): the extension is compiled
+# against that exact torch, so they are never resolved from here.
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/f0labs-ai/rabbit-gemm"
+
+[project.entry-points."vllm.general_plugins"]
+sr_w8a16 = "sr_vllm:register"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["sr_vllm"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "N", "PL"]
+ignore = ["PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+# The sweep is a measurement script kept as it ran: one long main(), and lambdas that are timed inside the
+# loop iteration that defines them.
+"benchmarks/*" = ["B023", "PLR0912", "PLR0913", "PLR0915", "PLR0917"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["sr_vllm._C"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
